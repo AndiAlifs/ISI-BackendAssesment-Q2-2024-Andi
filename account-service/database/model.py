@@ -11,7 +11,7 @@ uri = URL.create(
     password="root",
     host="localhost",
     port="5432",
-    database="sanberhub_pyjun",
+    database="account-isi",
 )
 
 # membuat engine untuk koneksi ke database
