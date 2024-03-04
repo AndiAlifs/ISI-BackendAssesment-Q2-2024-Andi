@@ -23,6 +23,9 @@ from loguru import logger
 
 import bcrypt
 import uvicorn
+import re
+
+from hashing import Hasher
 
 
 app = FastAPI() # inisialisasi app
@@ -73,6 +76,17 @@ def close_session(session):
     session.commit()
     session.close()
 
+async def set_body(request: Request, body: bytes):
+    async def receive():
+        return {"type": "http.request", "body": body}
+    request._receive = receive
+
+async def get_body(request: Request) -> bytes:
+    body = await request.body()
+    await set_body(request, body)
+    return body
+
+
 SKIP_MIDDLEWARE_PATHS = ["/daftar"]
 
 @app.middleware("http")
@@ -82,14 +96,37 @@ async def pin_validation(request: Request, call_next):
         if pin is None:
             logger.error("PIN tidak ditemukan")
             return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"remark": "failed - PIN Tidak Ditemukan"})
-        session = get_session()
+        
+        await set_body(request, await request.body())
+        reqs = await get_body(request)
+        body_raw = reqs.decode('utf-8')
+        no_rek_found = False
+        nomor_rekening = ""
+        for body in body_raw.split():
+            if "no_rekening" in body:
+                no_rek_found = True
+                continue
+            if no_rek_found:
+                nomor_rekening = body
+                break
+        nomor_rekening = re.sub(r'\D', '', nomor_rekening)
+
+        if not nomor_rekening or not no_rek_found:
+            logger.error("No Rekening tidak ditemukan")
+            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"remark": "failed - No Rekening terdapat kesalahan format"})
+
+        session = get_session()        
         account = crud.account_by_no_rekening(session, nomor_rekening)
         if account is None:
             logger.error("No Rekening tidak ditemukan")
             return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"remark": "failed - No Rekening tidak ditemukan"})
-        if not bcrypt.checkpw(pin.encode('utf-8'), account.pin):
+
+        if not Hasher.verify_password(pin.encode('utf-8'), account.pin):
             logger.error("PIN salah")
             return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"remark": "failed - PIN Salah"})
+
+        response = await call_next(request)
+        return response
     else:
         response = await call_next(request)
         return response
@@ -115,7 +152,7 @@ def create_account(account: AccountRequest):
             }
             return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
 
-    hashed_pin = bcrypt.hashpw(account.pin.encode('utf-8'), bcrypt.gensalt())
+    hashed_pin = Hasher.get_password_hash(account.pin)
     new_account = Account(
         nik=account.nik,
         nama=account.nama,
