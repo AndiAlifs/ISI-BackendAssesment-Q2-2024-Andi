@@ -20,7 +20,6 @@ import sys
 from uvicorn import Config, Server
 from loguru import logger
 
-
 import bcrypt
 import uvicorn
 import re
