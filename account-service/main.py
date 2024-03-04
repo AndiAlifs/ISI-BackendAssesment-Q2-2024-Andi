@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from database.model import Base, engine, Session, Account, Transaksi
 
 # import schemas yang merupakan request dan response
-from database.schemas import AccountRequest, TransaksiRequest
+from database.schemas import AccountRequest, TransaksiRequest, TransferRequest
 
 # import package yang digunakan dalam logic
 from datetime import datetime
@@ -88,6 +88,7 @@ async def get_body(request: Request) -> bytes:
 
 
 SKIP_MIDDLEWARE_PATHS = ["/daftar"]
+NOREK_ON_PATHS = ["/saldo", "/mutasi"]
 
 @app.middleware("http")
 async def pin_validation(request: Request, call_next):
@@ -97,23 +98,35 @@ async def pin_validation(request: Request, call_next):
             logger.error("PIN tidak ditemukan")
             return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"remark": "failed - PIN Tidak Ditemukan"})
         
-        await set_body(request, await request.body())
-        reqs = await get_body(request)
-        body_raw = reqs.decode('utf-8')
-        no_rek_found = False
         nomor_rekening = ""
-        for body in body_raw.split():
-            if "no_rekening" in body:
-                no_rek_found = True
-                continue
-            if no_rek_found:
-                nomor_rekening = body
+        no_rek_found = False
+        no_rek_on_path = False
+        for path in NOREK_ON_PATHS:
+            if path in request.url.path:
+                no_rek_on_path = True
                 break
-        nomor_rekening = re.sub(r'\D', '', nomor_rekening)
+        if no_rek_on_path:
+            nomor_rekening = request.url.path.split("/")[-1]
+            if nomor_rekening == "saldo" or nomor_rekening == "mutasi":
+                nor_rek_found = False
+            else:
+                no_rek_found = True
+        else:
+            await set_body(request, await request.body())
+            reqs = await get_body(request)
+            body_raw = reqs.decode('utf-8')
+            for body in body_raw.split():
+                if ("no_rekening_asal" in body) or ("no_rekening" in body ):
+                    no_rek_found = True
+                    continue
+                if no_rek_found:
+                    nomor_rekening = body
+                    break
+            nomor_rekening = re.sub(r'\D', '', nomor_rekening)
 
         if not nomor_rekening or not no_rek_found:
             logger.error("No Rekening tidak ditemukan")
-            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"remark": "failed - No Rekening terdapat kesalahan format"})
+            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"remark": "failed - No Rekening tidak ditemukan"})
 
         session = get_session()        
         account = crud.account_by_no_rekening(session, nomor_rekening)
@@ -251,6 +264,59 @@ def get_saldo(no_rekening: str):
         "remark": "success",
         "data": {
             "saldo": account.saldo
+        }
+    }
+    return JSONResponse(status_code=status.HTTP_200_OK, content=return_msg)
+
+@app.post("/transfer")
+def transfer(transfer: TransferRequest):
+    session = get_session()
+    account_pengirim = crud.account_by_no_rekening(session, transfer.no_rekening_asal)
+    account_penerima = crud.account_by_no_rekening(session, transfer.no_rekening_tujuan)
+
+    if account_pengirim is None:
+        return_msg = {
+            "remark": "failed - No Rekening Pengirim tidak ditemukan"
+        }
+        logger.error("No Rekening {} tidak ditemukan".format(transfer.no_rekening_asal))
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
+    if account_penerima is None:
+        return_msg = {
+            "remark": "failed - No Rekening Penerima tidak ditemukan"
+        }
+        logger.error("No Rekening {} tidak ditemukan".format(transfer.no_rekening_tujuan))
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
+    if account_pengirim.saldo < transfer.nominal:
+        return_msg = {
+            "remark": "failed - Saldo tidak cukup"
+        }
+        logger.error("Saldo {} sejumlah {} kurang dari {}".format(transfer.no_rekening_asal, account_pengirim.saldo, transfer.nominal))
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
+
+    crud.transfer_saldo(session, transfer.no_rekening_asal, transfer.no_rekening_tujuan, transfer.nominal)
+    logger.info("Transfer {} ke {} sejumlah {}".format(transfer.no_rekening_asal, transfer.no_rekening_tujuan, transfer.nominal))
+
+    new_transaksi_pengirim = Transaksi(
+        no_rekening=transfer.no_rekening_asal,
+        nominal=transfer.nominal,
+        waktu="now",
+        kode_transaksi="t"
+    )
+    new_transaksi_penerima = Transaksi(
+        no_rekening=transfer.no_rekening_tujuan,
+        nominal=transfer.nominal,
+        waktu="now",
+        kode_transaksi="t"
+    )
+    crud.create_transaksi(session, new_transaksi_pengirim)
+    crud.create_transaksi(session, new_transaksi_penerima)
+    close_session(session)
+
+    return_msg = {
+        "remark": "success",
+        "data": {
+            "saldo_pengirim": account_pengirim.saldo,
+            "saldo_penerima": account_penerima.saldo
         }
     }
     return JSONResponse(status_code=status.HTTP_200_OK, content=return_msg)

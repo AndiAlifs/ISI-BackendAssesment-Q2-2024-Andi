@@ -18,3 +18,11 @@ class TransaksiRequest(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TransferRequest(BaseModel):
+    no_rekening_asal: str
+    no_rekening_tujuan: str
+    nominal: int
+
+    class Config:
+        from_attributes = True

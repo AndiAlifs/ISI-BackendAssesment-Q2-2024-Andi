@@ -42,6 +42,13 @@ def tarik_saldo(session, no_rekening, jumlah):
     account.saldo -= jumlah
     return account
 
+def transfer_saldo(session, no_rekening_pengirim, no_rekening_penerima, jumlah):
+    account_pengirim = session.query(Account).filter(Account.no_rekening == no_rekening_pengirim).first()
+    account_penerima = session.query(Account).filter(Account.no_rekening == no_rekening_penerima).first()
+    account_pengirim.saldo -= jumlah
+    account_penerima.saldo += jumlah
+    return account_pengirim, account_penerima
+
 def create_transaksi(session, new_transaksi: Transaksi):
     session.add(new_transaksi)
     return new_transaksi
