@@ -1,5 +1,6 @@
 # import fastapi yang merupakan backend app
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Response, status, Request
+import time
 from fastapi.responses import JSONResponse
 
 # import database yang merupakan model dan akses database
@@ -13,6 +14,55 @@ from datetime import datetime
 import random
 import database.crud as crud
 
+import os
+import logging
+import sys
+from uvicorn import Config, Server
+from loguru import logger
+
+
+import bcrypt
+import uvicorn
+
+
+app = FastAPI() # inisialisasi app
+
+
+LOG_LEVEL = logging.getLevelName(os.environ.get("LOG_LEVEL", "DEBUG"))
+JSON_LOGS = True if os.environ.get("JSON_LOGS", "0") == "1" else False
+
+
+class InterceptHandler(logging.Handler):
+    def emit(self, record):
+        # get corresponding Loguru level if it exists
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # find caller from where originated the logged message
+        frame, depth = sys._getframe(6), 6
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
+
+def setup_logging():
+    # intercept everything at the root logger
+    logging.root.handlers = [InterceptHandler()]
+    logging.root.setLevel(LOG_LEVEL)
+
+    # remove every other logger's handlers
+    # and propagate to root logger
+    for name in logging.root.manager.loggerDict.keys():
+        logging.getLogger(name).handlers = []
+        logging.getLogger(name).propagate = True
+
+    # configure loguru
+    logger.configure(handlers=[{"sink": sys.stdout, "serialize": JSON_LOGS}])
+
 # function untuk mendapatkan session
 def get_session():
     session = Session(bind=engine, expire_on_commit=False)
@@ -23,30 +73,56 @@ def close_session(session):
     session.commit()
     session.close()
 
-app = FastAPI() # inisialisasi app
+SKIP_MIDDLEWARE_PATHS = ["/daftar"]
+
+@app.middleware("http")
+async def pin_validation(request: Request, call_next):
+    if request.url.path not in SKIP_MIDDLEWARE_PATHS:
+        pin = request.headers.get("pin")
+        if pin is None:
+            logger.error("PIN tidak ditemukan")
+            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"remark": "failed - PIN Tidak Ditemukan"})
+        session = get_session()
+        account = crud.account_by_no_rekening(session, nomor_rekening)
+        if account is None:
+            logger.error("No Rekening tidak ditemukan")
+            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"remark": "failed - No Rekening tidak ditemukan"})
+        if not bcrypt.checkpw(pin.encode('utf-8'), account.pin):
+            logger.error("PIN salah")
+            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"remark": "failed - PIN Salah"})
+    else:
+        response = await call_next(request)
+        return response
+
 
 # endpoint untuk daftar akun
 @app.post("/daftar")
 def create_account(account: AccountRequest):
+    logger.info(f"Request: {account}")
     session = get_session() # mendapatkan session
     all_account = crud.get_all_account(session)
     for acc in all_account:
         if acc.nik == account.nik:
+            logger.error("NIK sudah terdaftar")
             return_msg = {
                 "remark": "failed - NIK sudah terdaftar"
             }
             return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
         elif acc.no_hp == account.no_hp:
+            logger.error("No HP sudah terdaftar")
             return_msg = {
                 "remark": "failed - No HP sudah terdaftar"
             }
             return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
 
+    hashed_pin = bcrypt.hashpw(account.pin.encode('utf-8'), bcrypt.gensalt())
     new_account = Account(
         nik=account.nik,
         nama=account.nama,
         no_hp=account.no_hp,
         no_rekening=str(random.randint(100000, 999999)),
+        saldo=0,
+        pin=hashed_pin
     )
     crud.create_account(session, new_account)
     close_session(session)
@@ -180,3 +256,13 @@ def delete_test_data():
             crud.delete_transaksi(session, transaksi)
         crud.delete_account(session, test_data)
     close_session(session)
+
+if __name__ == "__main__":
+    server = Server(
+            Config(app="main:app", 
+                host="0.0.0.0",
+                log_level=LOG_LEVEL
+            )
+    )
+    setup_logging()
+    server.run()
