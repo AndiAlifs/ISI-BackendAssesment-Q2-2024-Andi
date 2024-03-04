@@ -36,6 +36,7 @@ class Account(Base):
     no_hp = Column(String)
     no_rekening = Column(String, nullable=True)
     saldo = Column(Integer, default=0)
+    pin = Column(String)
 
 class Transaksi(Base):
     __tablename__ = "transaksi"

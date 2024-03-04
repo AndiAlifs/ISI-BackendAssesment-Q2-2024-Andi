@@ -6,6 +6,7 @@ class AccountRequest(BaseModel):
     nik: str
     nama: str
     no_hp: str
+    pin: str
 
     class Config:
         from_attributes = True
