@@ -30,6 +30,8 @@ from kafka_utils import publish_message
 
 from middleware import pin_validation
 
+import controller.account as account_controller
+
 
 app = FastAPI() # inisialisasi app
 
@@ -41,41 +43,10 @@ async def pin_validation_middleware(request: Request, call_next):
 @app.post("/daftar")
 def create_account(account: AccountRequest):
     logger.info(f"Request: {account}")
-    session = get_session() # mendapatkan session
-    all_account = crud.get_all_account(session)
-    for acc in all_account:
-        if acc.nik == account.nik:
-            logger.error("NIK sudah terdaftar")
-            return_msg = {
-                "remark": "failed - NIK sudah terdaftar"
-            }
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
-        elif acc.no_hp == account.no_hp:
-            logger.error("No HP sudah terdaftar")
-            return_msg = {
-                "remark": "failed - No HP sudah terdaftar"
-            }
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
-
-    hashed_pin = Hasher.get_password_hash(account.pin)
-    new_account = Account(
-        nik=account.nik,
-        nama=account.nama,
-        no_hp=account.no_hp,
-        no_rekening=str(random.randint(100000, 999999)),
-        saldo=0,
-        pin=hashed_pin
-    )
-    crud.create_account(session, new_account)
-    close_session(session)
-
-    return_msg = {
-        "remark": "success",
-        "data": {
-            "no_rekening": new_account.no_rekening,
-        }
-    }
-    return JSONResponse(status_code=status.HTTP_200_OK, content=return_msg)
+    result = account_controller.create_account(account)
+    if result["remark"] == "failed":
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 # endpoint untuk tabung - menambah saldo
 @app.post("/tabung")
