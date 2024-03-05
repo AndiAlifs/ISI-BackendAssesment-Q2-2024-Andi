@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from database.model import Account, Transaksi
 from database import crud
 from database.model import get_session, close_session
-from database.schemas import TransaksiRequest
+from database.schemas import TransaksiRequest, TransferRequest
 import logging
 from loguru import logger
 import re
@@ -30,7 +30,7 @@ def tabung(transaksi: TransaksiRequest):
 
     transaksi_record = {
         "tanggal_transaksi": str(datetime.now()),
-        "no_rekening_debit": "",
+        "no_rekening_debit": "ATM",
         "no_rekening_kredit": transaksi.no_rekening,
         "nominal_debit": 0,
         "nominal_kredit": transaksi.nominal
@@ -113,4 +113,64 @@ def get_mutasi(no_rekening: str):
     
     close_session(session)
     return return_msg
+
+def transfer(transfer: TransferRequest):
+    session = get_session()
+    account_pengirim = check_account_existence(transfer.no_rekening_asal)
+    if account_pengirim["remark"] == "failed":
+        return account_pengirim
+
+    account_penerima = check_account_existence(transfer.no_rekening_tujuan)
+    if account_penerima["remark"] == "failed":
+        return account_penerima
+
+    account_pengirim = crud.account_by_no_rekening(session, transfer.no_rekening_asal)
+    account_penerima = crud.account_by_no_rekening(session, transfer.no_rekening_tujuan)
+    if account_pengirim.saldo < transfer.nominal:
+        logger.error("Saldo {} sejumlah {} kurang dari {}".format(transfer.no_rekening_asal, account_pengirim.saldo, transfer.nominal))
+        return_msg = {
+            "remark": "failed",
+
+            "data": {
+                "reason": "Saldo {} sejumlah {} kurang dari {}".format(transfer.no_rekening_asal, account_pengirim.saldo, transfer.nominal)
+            }
+        }
+        return return_msg
+
+    crud.transfer_saldo(session, transfer.no_rekening_asal, transfer.no_rekening_tujuan, transfer.nominal)
+    logger.info("Transfer {} ke {} sejumlah {}".format(transfer.no_rekening_asal, transfer.no_rekening_tujuan, transfer.nominal))
+    new_transaksi = Transaksi(
+        no_rekening=transfer.no_rekening_asal,
+        nominal=transfer.nominal,
+        waktu="now",
+        kode_transaksi="t"
+    )
+    crud.create_transaksi(session, new_transaksi)
+    new_transaksi = Transaksi(
+        no_rekening=transfer.no_rekening_tujuan,
+        nominal=transfer.nominal,
+        waktu="now",
+        kode_transaksi="t"
+    )
+    crud.create_transaksi(session, new_transaksi)
+
+    transaksi_record = {
+        "tanggal_transaksi": str(datetime.now()),
+        "no_rekening_debit": transfer.no_rekening_asal,
+        "no_rekening_kredit": transfer.no_rekening_tujuan,
+        "nominal_debit": transfer.nominal,
+        "nominal_kredit": transfer.nominal,
+    }
+    produce_transaction_message(transaksi_record)
     
+    account_pengirim = crud.account_by_no_rekening(session, transfer.no_rekening_asal)
+    account_penerima = crud.account_by_no_rekening(session, transfer.no_rekening_tujuan)
+    return_msg = {
+        "remark": "success",
+        "data": {
+            "saldo_pengirim": account_pengirim.saldo,
+            "saldo_penerima": account_penerima.saldo
+        }
+    }
+    close_session(session)
+    return return_msg

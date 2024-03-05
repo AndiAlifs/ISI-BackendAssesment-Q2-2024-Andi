@@ -7,7 +7,7 @@ from database.model import get_session, close_session
 from hashing import Hasher
 from loguru import logger
 
-SKIP_MIDDLEWARE_PATHS = ["/daftar"]
+SKIP_MIDDLEWARE_PATHS = ["/daftar", "/docs", "/openapi.json"]
 NOREK_ON_PATHS = ["/saldo", "/mutasi"]
 
 async def set_body(request: Request, body: bytes):

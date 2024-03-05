@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from main import app, delete_test_data
+from main import app
 import random
 import pytest
 from database.model import Session, Account, Transaksi, engine
