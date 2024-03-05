@@ -30,7 +30,7 @@ def tabung(transaksi: TransaksiRequest):
 
     transaksi_record = {
         "tanggal_transaksi": str(datetime.now()),
-        "no_rekening_debit": "ATM",
+        "no_rekening_debit": "",
         "no_rekening_kredit": transaksi.no_rekening,
         "nominal_debit": 0,
         "nominal_kredit": transaksi.nominal
@@ -90,3 +90,27 @@ def tarik(transaksi: TransaksiRequest):
         }
     }
     return return_msg
+
+def get_mutasi(no_rekening: str):
+    session = get_session()
+    account_exist = check_account_existence(no_rekening)
+    if account_exist["remark"] == "failed":
+        return account_exist
+
+    all_transaksi = session.query(Transaksi).filter(Transaksi.no_rekening == no_rekening).all()
+    return_msg = {
+        "remark": "success",
+        "data": {
+            "mutasi": []
+        }
+    }
+    for transaksi in all_transaksi:
+        return_msg["data"]["mutasi"].append({
+            "waktu": datetime.strftime(transaksi.waktu, '%Y-%m-%d %H:%M:%S'),
+            "nominal": transaksi.nominal,
+            "kode_transaksi": transaksi.kode_transaksi
+        })
+    
+    close_session(session)
+    return return_msg
+    
