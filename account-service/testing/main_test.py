@@ -13,6 +13,7 @@ def nomor_rekening():
             "nik": str(random.randint(1000000, 9999999)),
             "nama": "test_case",
             "no_hp": str(random.randint(1000000, 9999999)),
+            "pin": "321123"
         },
     )
     return response.json()["data"]["no_rekening"]
@@ -32,6 +33,7 @@ def test_create_rekening(db_session):
             "nik": nik,
             "nama": "test_case",
             "no_hp": no_hp,
+            "pin": "321123"
         },
     )
     
@@ -49,6 +51,7 @@ def test_create_rekening_failed_nik_sama(db_session):
             "nik": nik,
             "nama": "test_case",
             "no_hp": no_hp,
+            "pin": "321123"
         },
     )
     
@@ -58,12 +61,13 @@ def test_create_rekening_failed_nik_sama(db_session):
             "nik": nik,
             "nama": "test_case",
             "no_hp": no_hp,
+            "pin": "321123"
         },
     )
     
     response_json = response.json()
     assert response.status_code == 400
-    assert response_json["remark"] == "failed - NIK sudah terdaftar"
+    assert response_json["remark"] == "failed"
 
 def test_create_rekening_failed_no_hp_sama(db_session):
     nik = str(random.randint(1000000, 9999999))
@@ -75,6 +79,7 @@ def test_create_rekening_failed_no_hp_sama(db_session):
             "nik": nik,
             "nama": "test_case",
             "no_hp": no_hp,
+            "pin": "321123"
         },
     )
     
@@ -84,12 +89,13 @@ def test_create_rekening_failed_no_hp_sama(db_session):
             "nik": str(random.randint(1000000, 9999999)),
             "nama": "test_case",
             "no_hp": no_hp,
+            "pin": "321123"
         },
     )
     
     response_json = response.json()
     assert response.status_code == 400
-    assert response_json["remark"] == "failed - No HP sudah terdaftar"
+    assert response_json["remark"] == "failed"
 
 def test_tabung(db_session, nomor_rekening):
     response = client.post(
@@ -98,6 +104,7 @@ def test_tabung(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 100000,
         },
+        headers={"pin": "321123"}
     )
     
     response_json = response.json()
@@ -119,6 +126,7 @@ def test_tarik(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 50000,
         },
+        headers={"pin": "321123"}
     )
     
     response_json = response.json()
@@ -133,6 +141,7 @@ def test_tarik_failed_saldo_kurang(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 100000,
         },
+        headers={"pin": "321123"}
     )
 
     response = client.post(
@@ -196,6 +205,7 @@ def test_mutasi(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 100000,
         },
+        headers={"pin": "321123"}
     )
     response = client.post(
         "/tarik",
