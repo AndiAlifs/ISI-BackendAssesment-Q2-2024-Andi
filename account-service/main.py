@@ -26,6 +26,7 @@ import re
 
 from hashing import Hasher
 from log_config import setup_logging, LOG_LEVEL
+from kafka_utils import publish_message
 
 
 app = FastAPI() # inisialisasi app
@@ -108,7 +109,6 @@ async def pin_validation(request: Request, call_next):
         response = await call_next(request)
         return response
 
-
 # endpoint untuk daftar akun
 @app.post("/daftar")
 def create_account(account: AccountRequest):
@@ -161,14 +161,18 @@ def tabung(transaksi: TransaksiRequest):
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=return_msg)
     crud.tambah_saldo(session, transaksi.no_rekening, transaksi.nominal)
 
-    new_transaksi = Transaksi(
-        no_rekening=transaksi.no_rekening,
-        nominal=transaksi.nominal,
-        waktu="now",
-        kode_transaksi="c"
-    )
-    crud.create_transaksi(session, new_transaksi)
-    close_session(session)
+    transaksi_record = {
+        "tanggal_transaksi": str(datetime.now()),
+        "no_rekening_debit": transaksi.no_rekening,
+        "no_rekening_kredit": "0",
+        "nominal_debit": transaksi.nominal,
+        "nominal_kredit": 0
+    }
+    send_msg = str(transaksi_record)
+    send_msg = send_msg.replace("\'", "\"")
+    logger.info(f"Publishing message: {send_msg}")
+    publish_message(send_msg)
+
 
     return_msg = {
         "remark": "success",
