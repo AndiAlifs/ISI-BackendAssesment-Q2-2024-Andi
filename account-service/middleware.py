@@ -55,17 +55,37 @@ async def pin_validation(request: Request, call_next):
 
         if not nomor_rekening or not no_rek_found:
             logger.error("No Rekening tidak ditemukan")
-            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"remark": "failed - No Rekening tidak ditemukan"})
+            return_msg = {
+                "remark": "failed",
+                "data": {
+                    "reason": "No Rekening {} tidak ditemukan".format(nomor_rekening)
+                }
+            }
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
 
         session = get_session()        
         account = crud.account_by_no_rekening(session, nomor_rekening)
         if account is None:
             logger.error("No Rekening tidak ditemukan")
-            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"remark": "failed - No Rekening tidak ditemukan"})
+            return_msg = {
+                "remark": "failed",
+                "data": {
+                    "reason": "No Rekening {} tidak ditemukan".format(nomor_rekening)
+                }
+            }
+            close_session(session)
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
 
         if not Hasher.verify_password(pin.encode('utf-8'), account.pin):
             logger.error("PIN salah")
-            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"remark": "failed - PIN Salah"})
+            return_msg = {
+                "remark": "failed",
+                "data": {
+                    "reason": "PIN salah"
+                }
+            }
+            close_session(session)
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
 
         response = await call_next(request)
         close_session(session)

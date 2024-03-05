@@ -75,3 +75,27 @@ def create_account(account: AccountRequest):
         }
     }
     return return_msg
+
+def cek_saldo(no_rekening: str):
+    account_exist = check_account_existence(no_rekening)
+    if account_exist["remark"] == "failed":
+        return account_exist
+
+    session = get_session()
+    account = crud.account_by_no_rekening(session, no_rekening)
+    if account is None:
+        return_msg = {
+            "remark": "failed",
+            "data": {
+                "reason": "No rekening {} tidak ditemukan".format(no_rekening),
+            }
+        }
+        return return_msg
+    return_msg = {
+        "remark": "success",
+        "data": {
+            "saldo": account.saldo
+        }
+    }
+    close_session(session)
+    return return_msg

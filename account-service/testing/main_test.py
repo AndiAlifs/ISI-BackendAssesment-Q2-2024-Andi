@@ -118,6 +118,7 @@ def test_tarik(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 100000,
         },
+        headers={"pin": "321123"}
     )
 
     response = client.post(
@@ -150,11 +151,12 @@ def test_tarik_failed_saldo_kurang(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 120000,
         },
+        headers={"pin": "321123"}
     )
     
     response_json = response.json()
     assert response.status_code == 400
-    assert response_json["remark"] == "failed - Saldo tidak cukup"
+    assert response_json["remark"] == "failed"
 
 def test_tarik_failed_no_rekening_tidak_ditemukan(db_session):
     nomor_rekening = "123456"
@@ -165,11 +167,12 @@ def test_tarik_failed_no_rekening_tidak_ditemukan(db_session):
             "no_rekening": nomor_rekening,
             "nominal": 120000,
         },
+        headers={"pin": "321123"}
     )
     
     response_json = response.json()
-    assert response.status_code == 404
-    assert response_json["remark"] == "failed - No Rekening tidak ditemukan"
+    assert response.status_code == 400
+    assert response_json["remark"] == "failed"
 
 def test_saldo(db_session, nomor_rekening):
     response = client.post(
@@ -178,9 +181,11 @@ def test_saldo(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 23000,
         },
+        headers = {"pin": "321123"}
     )
     response = client.get(
-        "/saldo/" + nomor_rekening
+        "/saldo/" + nomor_rekening,
+        headers={"pin": "321123"}
     )
     
     response_json = response.json()
@@ -191,12 +196,13 @@ def test_saldo(db_session, nomor_rekening):
 def test_mutasi_failed_no_rekening_tidak_ditemukan(db_session):
     nomor_rekening = "123456"
     response = client.get(
-        "/mutasi/" + nomor_rekening
+        "/mutasi/" + nomor_rekening,
+        headers={"pin": "321123"}
     )
     
     response_json = response.json()
-    assert response.status_code == 404
-    assert response_json["remark"] == "failed - No Rekening tidak ditemukan"
+    assert response.status_code == 400
+    assert response_json["remark"] == "failed"
 
 def test_mutasi(db_session, nomor_rekening):
     response = client.post(
@@ -213,9 +219,11 @@ def test_mutasi(db_session, nomor_rekening):
             "no_rekening": nomor_rekening,
             "nominal": 50000,
         },
+        headers={"pin": "321123"}
     )
     response = client.get(
-        "/mutasi/" + nomor_rekening
+        "/mutasi/" + nomor_rekening,
+        headers={"pin": "321123"}
     )
     
     response_json = response.json()

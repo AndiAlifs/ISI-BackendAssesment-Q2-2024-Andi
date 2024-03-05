@@ -40,7 +40,6 @@ app = FastAPI() # inisialisasi app
 async def pin_validation_middleware(request: Request, call_next):
     return await pin_validation(request, call_next)
 
-# endpoint untuk daftar akun
 @app.post("/daftar")
 def create_account(account: AccountRequest):
     logger.info(f"Request: {account}")
@@ -49,7 +48,6 @@ def create_account(account: AccountRequest):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
-# endpoint untuk tabung - menambah saldo
 @app.post("/tabung")
 def tabung(transaksi: TransaksiRequest):
     logger.info(f"Request: {transaksi}")
@@ -58,59 +56,22 @@ def tabung(transaksi: TransaksiRequest):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
-# endpoint untuk tarik - mengurangi saldo
 @app.post("/tarik")
 def tarik(transaksi: TransaksiRequest):
-    session = get_session()
-    account = crud.account_by_no_rekening(session, transaksi.no_rekening)
-    if account is None:
-        return_msg = {
-            "remark": "failed - No Rekening tidak ditemukan"
-        }
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=return_msg)
-    if account.saldo < transaksi.nominal:
-        return_msg = {
-            "remark": "failed - Saldo tidak cukup"
-        }
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
-    crud.tarik_saldo(session, transaksi.no_rekening, transaksi.nominal)
-
-    new_transaksi = Transaksi(
-        no_rekening=transaksi.no_rekening,
-        nominal=transaksi.nominal,
-        waktu="now",
-        kode_transaksi="d"
-    )
-    crud.create_transaksi(session, new_transaksi)
-    close_session(session)
-
-    return_msg = {
-        "remark": "success",
-        "data": {
-            "saldo": account.saldo
-        }
-    }
-    return JSONResponse(status_code=status.HTTP_200_OK, content=return_msg)
+    logger.info(f"Request: {transaksi}")
+    result = transaksi_controller.tarik(transaksi)
+    if result["remark"] == "failed":
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 # endpoint untuk cek saldo
 @app.get("/saldo/{no_rekening}")
 def get_saldo(no_rekening: str):
-    session = get_session()
-    account = crud.account_by_no_rekening(session, no_rekening)
-    if account is None:
-        return_msg = {
-            "remark": "failed - No Rekening tidak ditemukan"
-        }
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=return_msg)
-    close_session(session)
-
-    return_msg = {
-        "remark": "success",
-        "data": {
-            "saldo": account.saldo
-        }
-    }
-    return JSONResponse(status_code=status.HTTP_200_OK, content=return_msg)
+    logger.info(f"Request: {no_rekening}")
+    result = account_controller.check_account_existence(no_rekening)
+    if result["remark"] == "failed":
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 @app.post("/transfer")
 def transfer(transfer: TransferRequest):
@@ -175,7 +136,7 @@ def get_mutasi(no_rekening: str):
         return_msg = {
             "remark": "failed - No Rekening tidak ditemukan"
         }
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=return_msg)
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=return_msg)
 
     all_transaksi = session.query(Transaksi).filter(Transaksi.no_rekening == no_rekening).all()
     return_msg = {
