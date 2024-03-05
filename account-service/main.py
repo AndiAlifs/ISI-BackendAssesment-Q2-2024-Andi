@@ -31,6 +31,7 @@ from kafka_utils import publish_message
 from middleware import pin_validation
 
 import controller.account as account_controller
+import controller.transaksi as transaksi_controller
 
 
 app = FastAPI() # inisialisasi app
@@ -51,34 +52,11 @@ def create_account(account: AccountRequest):
 # endpoint untuk tabung - menambah saldo
 @app.post("/tabung")
 def tabung(transaksi: TransaksiRequest):
-    session = get_session()
-    account = crud.account_by_no_rekening(session, transaksi.no_rekening)
-    if account is None:
-        return_msg = {
-            "remark": "failed - No Rekening tidak ditemukan"
-        }
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=return_msg)
-    crud.tambah_saldo(session, transaksi.no_rekening, transaksi.nominal)
-
-    transaksi_record = {
-        "tanggal_transaksi": str(datetime.now()),
-        "no_rekening_debit": transaksi.no_rekening,
-        "no_rekening_kredit": "0",
-        "nominal_debit": transaksi.nominal,
-        "nominal_kredit": 0
-    }
-    send_msg = str(transaksi_record)
-    send_msg = send_msg.replace("\'", "\"")
-    logger.info(f"Publishing message: {send_msg}")
-    publish_message(send_msg)
-
-    return_msg = {
-        "remark": "success",
-        "data": {
-            "saldo": account.saldo
-        }
-    }
-    return JSONResponse(status_code=status.HTTP_200_OK, content=return_msg)
+    logger.info(f"Request: {transaksi}")
+    result = transaksi_controller.tabung(transaksi)
+    if result["remark"] == "failed":
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 # endpoint untuk tarik - mengurangi saldo
 @app.post("/tarik")

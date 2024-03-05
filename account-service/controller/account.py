@@ -10,6 +10,28 @@ from loguru import logger
 import re
 from hashing import Hasher
 
+def check_account_existence(no_rekening: str):
+    session = get_session()
+    account = crud.account_by_no_rekening(session, no_rekening)
+    if account is None:
+        logger.error("No rekening {} tidak ditemukan".format(no_rekening))
+        return_msg = {
+            "remark": "failed",
+            "data": {
+                "reason": "No rekening {} tidak ditemukan".format(no_rekening),
+            }
+        }
+        return return_msg
+    logger.info("No rekening {} ditemukan".format(no_rekening))
+    return_msg = {
+        "remark": "success",
+        "data": {
+            "saldo": account.saldo
+        }
+    }
+    close_session(session)
+    return return_msg
+
 def create_account(account: AccountRequest):
     session = get_session() # mendapatkan session
     all_account = crud.get_all_account(session)
