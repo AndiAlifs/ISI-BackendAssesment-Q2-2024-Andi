@@ -49,3 +49,13 @@ class Transaksi(Base):
 # inisiasi membuat tabel di database
 Base.metadata.create_all(engine)
 session.close()
+
+# function untuk mendapatkan session
+def get_session():
+    session = Session(bind=engine, expire_on_commit=False)
+    return session
+    
+# function untuk menutup session
+def close_session(session):
+    session.commit()
+    session.close()
