@@ -16,8 +16,5 @@ COPY . .
 # Build the application
 RUN go build -o /journal-service
 
-# Expose the port on which your Go app will run
-EXPOSE 8001
-
 # Start the Go app
 CMD [ "/journal-service" ]
