@@ -8,7 +8,7 @@ from database.schemas import AccountRequest
 import logging
 from loguru import logger
 import re
-from hashing import Hasher
+from utils.hashing import Hasher
 
 def check_account_existence(no_rekening: str):
     session = get_session()

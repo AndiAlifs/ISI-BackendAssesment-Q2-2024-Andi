@@ -8,9 +8,9 @@ from database.schemas import TransaksiRequest, TransferRequest
 import logging
 from loguru import logger
 import re
-from hashing import Hasher
+from utils.hashing import Hasher
 from controller.account import check_account_existence
-from kafka_utils import produce_transaction_message
+from utils.kafka_utils import produce_transaction_message
 from datetime import datetime
 
 def tabung(transaksi: TransaksiRequest):

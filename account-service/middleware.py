@@ -4,7 +4,7 @@ from starlette import status
 import re
 from database import crud
 from database.model import get_session, close_session
-from hashing import Hasher
+from utils.hashing import Hasher
 from loguru import logger
 
 SKIP_MIDDLEWARE_PATHS = ["/daftar", "/docs", "/openapi.json"]
