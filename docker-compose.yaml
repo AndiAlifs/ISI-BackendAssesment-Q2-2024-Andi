@@ -44,5 +44,46 @@ services:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
 
+  account-service:
+    image: account-service
+    container_name: account-service
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=account-isi
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - LOG_LEVEL=INFO
+      - KAFKA_TOPICS=journal
+      - KAFKA_BROKER_URL=kafka:9092
+      - KAFKA_GROUP_ID=journal-reader
+    depends_on:
+      - postgres
+      - kafka
+    restart: always
+    
+  journal-service:
+    image: journal-service
+    container_name: journal-service
+    ports:
+      - "8001:8001"
+    environment:
+      - DB_NAME=account-isi
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - LOG_LEVEL=INFO
+      - KAFKA_TOPICS=journal
+      - KAFKA_BROKER_URL=kafka:9092
+      - KAFKA_GROUP_ID=journal-reader
+    depends_on:
+      - postgres
+      - kafka
+      - account-service
+    restart: always
+
 volumes:
   pgdata:

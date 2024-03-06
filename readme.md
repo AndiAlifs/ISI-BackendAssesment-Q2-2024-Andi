@@ -23,8 +23,18 @@
 
 ### How to run
 1. Clone this repository
-2. Run `docker-compose up` in the root directory of this repository
-3. Test hit via Postman
+2. Build the docker image in accout-service 
+```powershell
+cd account-service
+docker build -t account-service .
+cd ..
+```
+3. Build the docker image in journal-service 
+```powershell
+cd journal-service
+docker build -t journal-service .
+cd ..
+```
 
 
 ## Contributing
