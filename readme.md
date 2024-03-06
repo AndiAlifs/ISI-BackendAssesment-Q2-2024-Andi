@@ -41,10 +41,6 @@ docker-compose up
 ```
 5. Hit the API via Postman
 
-## Contributing
-
-Guidelines for contributing to your project.
-
 ## License
-
-Information about the license for your project.
+[MIT](https://choosealicense.com/licenses/mit/)
+```
