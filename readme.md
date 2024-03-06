@@ -35,7 +35,11 @@ cd journal-service
 docker build -t journal-service .
 cd ..
 ```
-
+4. Run the docker-compose
+```powershell
+docker-compose up
+```
+5. Hit the API via Postman
 
 ## Contributing
 
