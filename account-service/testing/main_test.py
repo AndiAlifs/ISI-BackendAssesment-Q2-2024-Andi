@@ -271,6 +271,30 @@ def test_transfer(db_session, nomor_rekening, nomor_rekening_2):
     assert response_json["data"]["saldo_pengirim"] == 70000
     assert response_json["data"]["saldo_penerima"] == 50000
 
+def test_transfer_fail_saldo_kurang(db_session, nomor_rekening, nomor_rekening_2):
+    response = client.post(
+        "/tabung",
+        json={
+            "no_rekening": nomor_rekening,
+            "nominal": 120000,
+        },
+        headers={"pin": "321123"}
+    )
+    response = client.post(
+        "/transfer",
+        json={
+            "no_rekening_asal": nomor_rekening,
+            "no_rekening_tujuan": nomor_rekening_2,
+            "nominal": 150000,
+        },
+        headers={"pin": "321123"}
+    )
+    
+    response_json = response.json()
+    
+    assert response.status_code == 400
+    assert response_json["remark"] == "failed"
+
 def delete_test_data():
     session = get_session()
     all_test_account = crud.get_accounts_by_name(session, "test")
