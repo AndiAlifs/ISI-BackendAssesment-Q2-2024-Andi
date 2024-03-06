@@ -6,7 +6,7 @@
 
 ## Overview
 
-![Architecture](asset/architecture.png)
+![Architecture](asset/architecture_nt.png)
 
 ### Routes
 ![Routes](asset/default_route.png)
