@@ -42,4 +42,4 @@ docker-compose up
 5. Hit the API via Postman
 
 ## License
-[MIT](https://choosealicense.com/licenses/mit/)\\
+[MIT](https://choosealicense.com/licenses/mit/)
