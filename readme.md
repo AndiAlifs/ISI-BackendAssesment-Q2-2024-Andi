@@ -7,10 +7,10 @@
 
 ## Overview
 
-![Architecture](asset\architecture.png)
+![Architecture](asset/architecture.png)
 
 ### Routes
-![Architecture](asset\default_route.png)
+![Routes](asset/default_route.png)
 
 
 ## Installation
