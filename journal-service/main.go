@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-
-	"github.com/joho/godotenv"
-	"github.com/segmentio/kafka-go"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"github.com/go-redis/redis/v8"
 )
 
 type Journal struct {
@@ -36,21 +34,6 @@ func connectToPostgreSQL() (*gorm.DB, error) {
 	return db, nil
 }
 
-func connectToKafkaReader() (*kafka.Reader, error) {
-	brokers := os.Getenv("KAFKA_BROKER_URL")
-	topic := os.Getenv("KAFKA_TOPIC")
-	groupID := os.Getenv("KAFKA_GROUP_ID")
-
-	config := kafka.ReaderConfig{
-		Brokers: []string{brokers},
-		Topic:   topic,
-		GroupID: groupID,
-	}
-
-	reader := kafka.NewReader(config)
-	return reader, nil
-}
-
 func createJournal(db *gorm.DB, journal *Journal) error {
 	result := db.Create(journal)
 	if result.Error != nil {
@@ -60,11 +43,6 @@ func createJournal(db *gorm.DB, journal *Journal) error {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	db, err := connectToPostgreSQL()
 	if err != nil {
 		log.Fatal("Error connecting to database:", err)
@@ -74,22 +52,28 @@ func main() {
 		log.Fatal("Error migrating database:", err)
 	}
 
-	reader, err := connectToKafkaReader()
-	if err != nil {
-		log.Fatal("Error connecting to kafka reader:", err)
-	}
-	defer reader.Close()
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	redisAddr := redisHost + ":" + redisPort
 
+	var ctx = context.Background()
+	var readerClient = redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+
+	subscriber := readerClient.Subscribe(ctx, os.Getenv("REDIS_KEY"))
+	
 	for {
-		msg, err := reader.ReadMessage(context.Background())
+		log.Println("Waiting for message...")
+		msg, err := subscriber.ReceiveMessage(ctx)
 		if err != nil {
 			log.Fatal("Error reading message:", err)
 		}
-
+		
 		NewJournal := Journal{}
-		err = json.Unmarshal([]byte(msg.Value), &NewJournal)
+		err = json.Unmarshal([]byte(msg.Payload), &NewJournal)
 		if err != nil {
-			log.Printf("Received message: %v", string(msg.Value))
+			log.Printf("Received message: %v", string(msg.Payload))
 			log.Fatal("Error unmarshalling message:", err)
 		}
 		log.Printf("Received Journal: %v", NewJournal)

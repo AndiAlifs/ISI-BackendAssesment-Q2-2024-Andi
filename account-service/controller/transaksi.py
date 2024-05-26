@@ -10,8 +10,8 @@ from loguru import logger
 import re
 from utils.hashing import Hasher
 from controller.account import check_account_existence
-from utils.kafka_utils import produce_transaction_message
 from datetime import datetime
+from utils.redis_utils import produce_transaction_message
 
 def tabung(transaksi: TransaksiRequest):
     session = get_session()
@@ -79,7 +79,7 @@ def tarik(transaksi: TransaksiRequest):
         "nominal_debit": transaksi.nominal,
         "nominal_kredit": 0
     }
-    produce_transaction_message(transaksi_record)
+    # produce_transaction_message(transaksi_record)
 
     close_session(session)
     account = crud.account_by_no_rekening(session, transaksi.no_rekening)
@@ -161,7 +161,7 @@ def transfer(transfer: TransferRequest):
         "nominal_debit": transfer.nominal,
         "nominal_kredit": transfer.nominal,
     }
-    produce_transaction_message(transaksi_record)
+    # produce_transaction_message(transaksi_record)
     
     account_pengirim = crud.account_by_no_rekening(session, transfer.no_rekening_asal)
     account_penerima = crud.account_by_no_rekening(session, transfer.no_rekening_tujuan)

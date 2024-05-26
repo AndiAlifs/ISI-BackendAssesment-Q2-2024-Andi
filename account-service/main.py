@@ -12,7 +12,6 @@ from uvicorn import Config, Server
 from loguru import logger
 from utils.hashing import Hasher
 from utils.log_config import setup_logging, LOG_LEVEL
-from utils.kafka_utils import publish_message
 from middleware import pin_validation
 
 app = FastAPI() # inisialisasi app

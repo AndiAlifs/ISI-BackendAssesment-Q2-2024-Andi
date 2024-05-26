@@ -2,86 +2,74 @@ services:
   postgres:
     image: postgres
     environment:
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=root
-      - POSTGRES_DB=account-isi
+      - POSTGRES_USER=${DB_USERNAME?Variable not set}
+      - POSTGRES_PASSWORD=${DB_PASSWORD?Variable not set}
+      - POSTGRES_DB=account-${DB_NAME?Variable not set}
     volumes:  
     - pgdata:/var/lib/postgresql/data
     ports:
     - 5432:5432
 
-  zookeeper:
-    image: wurstmeister/zookeeper:latest
-    container_name: zookeeper
+  redis:
+    image: "redis:alpine"
+    command: redis-server
     ports:
-      - "2181:2181"
-    restart: unless-stopped
-
-  kafka:
-    image: wurstmeister/kafka:latest
-    container_name: kafka
-    ports:
-      - "9092:9092"
-      - "9093:9093"
-    environment:
-      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9093
-      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CREATE_TOPICS: "journal:1:1"
+      - "6379:6379"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui
-    container_name: kafka-ui
-    ports:
-      - "8080:8080"
-    restart: always
+      - ./redis-data:/var/lib/redis
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
     environment:
-      - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - REDIS_REPLICATION_MODE=master
 
   account-service:
+    build: 
+      context: ./account-service
+      dockerfile: Dockerfile
     image: account-service
     container_name: account-service
     ports:
       - "8000:8000"
+    volumes:
+      - ./account-service:/app
     environment:
-      - DB_NAME=account-isi
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_NAME=${DB_NAME?Variable not set}
+      - DB_USERNAME=${DB_USERNAME?Variable not set}
+      - DB_PASSWORD=${DB_PASSWORD?Variable not set}
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - LOG_LEVEL=INFO
-      - KAFKA_TOPICS=journal
-      - KAFKA_BROKER_URL=kafka:9092
-      - KAFKA_GROUP_ID=journal-reader
+      - DB_PORT=${DB_PORT?Variable not set}
+      - LOG_LEVEL=${LOG_LEVEL?Variable not set}
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT?Variable not set}
+      - REDIS_KEY=${REDIS_KEY?Variable not set}
+      - REDIS_DB=${REDIS_DB?Variable not set}
     depends_on:
       - postgres
-      - kafka
+      - redis
     restart: always
     
   journal-service:
+    build: 
+      context: ./journal-service
+      dockerfile: Dockerfile
     image: journal-service
     container_name: journal-service
     ports:
       - "8001:8001"
+    volumes:
+      - ./journal-service:/app
     environment:
-      - DB_NAME=account-isi
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_NAME=${DB_NAME?Variable not set}
+      - DB_USERNAME=${DB_USERNAME?Variable not set}
+      - DB_PASSWORD=${DB_PASSWORD?Variable not set}
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - LOG_LEVEL=INFO
-      - KAFKA_TOPICS=journal
-      - KAFKA_BROKER_URL=kafka:9092
-      - KAFKA_GROUP_ID=journal-reader
+      - DB_PORT=${DB_PORT?Variable not set}
+      - LOG_LEVEL=${LOG_LEVEL?Variable not set}
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT?Variable not set}
+      - REDIS_KEY=${REDIS_KEY?Variable not set}
+      - REDIS_DB=${REDIS_DB?Variable not set}
     depends_on:
       - postgres
-      - kafka
       - account-service
     restart: always
 
