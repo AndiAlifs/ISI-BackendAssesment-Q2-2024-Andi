@@ -4,11 +4,16 @@ FROM python:3.11
 # Set the working directory inside the container
 WORKDIR /app
 
+
 # Copy the requirements file to the working directory
 COPY requirements.txt .
 
 # Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip install opentelemetry-distro
+RUN pip install opentelemetry-exporter-otlp-proto-grpc
+RUN opentelemetry-bootstrap -a install
 
 # Copy the rest of the application code to the working directory
 COPY . .
@@ -17,4 +22,4 @@ COPY . .
 EXPOSE 8000
 
 # Start the FastAPI app
-CMD ["uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["opentelemetry-instrument", "--traces_exporter", "otlp", "--metrics_exporter", "none", "--logs_exporter", "otlp", "--service_name", "account-service","--exporter_otlp_endpoint", "jaeger:4317", "python", "main.py"]

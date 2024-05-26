@@ -82,12 +82,22 @@ def get_mutasi(no_rekening: str):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
-if __name__ == "__main__":
+if __name__ == "__main__":\
+    # in production mode
     server = Server(
             Config(app="main:app", 
                 host="0.0.0.0",
-                log_level=LOG_LEVEL
+                log_level=LOG_LEVEL,
+                reload=True
             )
     )
-    setup_logging()
     server.run()
+
+    # in development mode
+    # setup_logging()
+    # uvicorn.run(
+    #     app="main:app",
+    #     host="0.0.0.0",
+    #     log_level=LOG_LEVEL,
+    #     reload=True
+    # )
