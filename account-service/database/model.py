@@ -38,6 +38,15 @@ class Account(Base):
     saldo = Column(Integer, default=0)
     pin = Column(String)
 
+    def to_dict(self):
+        return {
+            "nik": self.nik,
+            "nama": self.nama,
+            "no_hp": self.no_hp,
+            "no_rekening": self.no_rekening,
+            "saldo": self.saldo,
+        }
+
 class Transaksi(Base):
     __tablename__ = "transaksi"
     id = Column(Integer, primary_key=True)
@@ -45,6 +54,15 @@ class Transaksi(Base):
     nominal = Column(Integer)
     waktu = Column(DateTime)
     kode_transaksi = Column(String)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "no_rekening": self.no_rekening,
+            "nominal": self.nominal,
+            "waktu": self.waktu,
+            "kode_transaksi": self.kode_transaksi
+        }
 
 # inisiasi membuat tabel di database
 Base.metadata.create_all(engine)

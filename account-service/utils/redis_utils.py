@@ -12,8 +12,6 @@ p = r.pubsub()
 
 
 def publish_message(message):
-    print(f"Publishing message: {message}")
-    print(f"Channel: {channel}")
     r.publish(channel, message)
 
 def produce_transaction_message(transaksi_record):

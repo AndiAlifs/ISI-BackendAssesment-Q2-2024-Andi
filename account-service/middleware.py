@@ -22,9 +22,6 @@ async def get_body(request: Request) -> bytes:
 
 async def pin_validation(request: Request, call_next):
     if request.url.path not in SKIP_MIDDLEWARE_PATHS:
-        print(request.headers.items())
-
-
         pin = request.headers.get("pin")
         if pin is None:
             logger.error("PIN tidak ditemukan")

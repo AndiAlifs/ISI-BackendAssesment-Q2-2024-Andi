@@ -17,6 +17,7 @@ def tabung(transaksi: TransaksiRequest):
     session = get_session()
     account_exist = check_account_existence(transaksi.no_rekening)
     if account_exist["remark"] == "failed":
+        logger.error("Account {} does not exist".format(transaksi.no_rekening))
         return account_exist
 
     crud.tambah_saldo(session, transaksi.no_rekening, transaksi.nominal)
@@ -51,10 +52,12 @@ def tarik(transaksi: TransaksiRequest):
     session = get_session()
     account_exist = check_account_existence(transaksi.no_rekening)
     if account_exist["remark"] == "failed":
+        logger.error("Account {} does not exist".format(transaksi.no_rekening))
         return account_exist
 
     account = crud.account_by_no_rekening(session, transaksi.no_rekening)
     if account.saldo < transaksi.nominal:
+        logger.error("Saldo saat ini {} tidak cukup untuk melakukan transaksi".format(account.saldo))
         return_msg = {
             "remark": "failed",
             "data": {
@@ -79,7 +82,7 @@ def tarik(transaksi: TransaksiRequest):
         "nominal_debit": transaksi.nominal,
         "nominal_kredit": 0
     }
-    # produce_transaction_message(transaksi_record)
+    produce_transaction_message(transaksi_record)
 
     close_session(session)
     account = crud.account_by_no_rekening(session, transaksi.no_rekening)
@@ -97,7 +100,7 @@ def get_mutasi(no_rekening: str):
     if account_exist["remark"] == "failed":
         return account_exist
 
-    all_transaksi = session.query(Transaksi).filter(Transaksi.no_rekening == no_rekening).all()
+    all_transaksi = crud.get_all_transaksi_by_no_rekening(session, no_rekening)
     return_msg = {
         "remark": "success",
         "data": {
@@ -109,8 +112,7 @@ def get_mutasi(no_rekening: str):
             "waktu": datetime.strftime(transaksi.waktu, '%Y-%m-%d %H:%M:%S'),
             "nominal": transaksi.nominal,
             "kode_transaksi": transaksi.kode_transaksi
-        })
-    
+        })    
     close_session(session)
     return return_msg
 
@@ -118,10 +120,12 @@ def transfer(transfer: TransferRequest):
     session = get_session()
     account_pengirim = check_account_existence(transfer.no_rekening_asal)
     if account_pengirim["remark"] == "failed":
+        logger.error("Account Pengirim {} does not exist".format(transfer.no_rekening_asal))
         return account_pengirim
 
     account_penerima = check_account_existence(transfer.no_rekening_tujuan)
     if account_penerima["remark"] == "failed":
+        logger.error("Account Penerima {} does not exist".format(transfer.no_rekening_tujuan))
         return account_penerima
 
     account_pengirim = crud.account_by_no_rekening(session, transfer.no_rekening_asal)
@@ -138,7 +142,6 @@ def transfer(transfer: TransferRequest):
         return return_msg
 
     crud.transfer_saldo(session, transfer.no_rekening_asal, transfer.no_rekening_tujuan, transfer.nominal)
-    logger.info("Transfer {} ke {} sejumlah {}".format(transfer.no_rekening_asal, transfer.no_rekening_tujuan, transfer.nominal))
     new_transaksi = Transaksi(
         no_rekening=transfer.no_rekening_asal,
         nominal=transfer.nominal,
@@ -161,7 +164,7 @@ def transfer(transfer: TransferRequest):
         "nominal_debit": transfer.nominal,
         "nominal_kredit": transfer.nominal,
     }
-    # produce_transaction_message(transaksi_record)
+    produce_transaction_message(transaksi_record)
     
     account_pengirim = crud.account_by_no_rekening(session, transfer.no_rekening_asal)
     account_penerima = crud.account_by_no_rekening(session, transfer.no_rekening_tujuan)

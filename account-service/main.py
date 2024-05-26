@@ -24,7 +24,9 @@ async def pin_validation_middleware(request: Request, call_next):
 def create_account(account: AccountRequest):
     logger.info(f"Request: {account}")
     result = account_controller.create_account(account)
+    logger.info(f"Response: {result}")
     if result["remark"] == "failed":
+        logger.error(f"Failed to create account {account.no_rekening}")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
@@ -32,7 +34,9 @@ def create_account(account: AccountRequest):
 def tabung(transaksi: TransaksiRequest):
     logger.info(f"Request: {transaksi}")
     result = transaksi_controller.tabung(transaksi)
+    logger.info(f"Response: {result}")
     if result["remark"] == "failed":
+        logger.error(f"Failed to deposit {transaksi.nominal} to account {transaksi.no_rekening}")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
@@ -40,7 +44,9 @@ def tabung(transaksi: TransaksiRequest):
 def tarik(transaksi: TransaksiRequest):
     logger.info(f"Request: {transaksi}")
     result = transaksi_controller.tarik(transaksi)
+    logger.info(f"Response: {result}")
     if result["remark"] == "failed":
+        logger.error(f"Failed to withdraw {transaksi.nominal} from account {transaksi.no_rekening}")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
@@ -49,7 +55,9 @@ def tarik(transaksi: TransaksiRequest):
 def get_saldo(no_rekening: str):
     logger.info(f"Request: {no_rekening}")
     result = account_controller.check_account_existence(no_rekening)
+    logger.info(f"Response: {result}")
     if result["remark"] == "failed":
+        logger.error(f"Account {no_rekening} does not exist")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
@@ -57,7 +65,9 @@ def get_saldo(no_rekening: str):
 def transfer(transfer: TransferRequest):
     logger.info(f"Request: {transfer}")
     result = transaksi_controller.transfer(transfer)
+    logger.info(f"Response: {result}")
     if result["remark"] == "failed":
+        logger.error(f"Failed to transfer {transfer.nominal} from account {transfer.no_rekening_pengirim} to account {transfer.no_rekening_penerima}")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
@@ -66,7 +76,9 @@ def transfer(transfer: TransferRequest):
 def get_mutasi(no_rekening: str):
     logger.info(f"Request: {no_rekening}")
     result = transaksi_controller.get_mutasi(no_rekening)
+    logger.info(f"Response: {result}")
     if result["remark"] == "failed":
+        logger.error(f"Account {no_rekening} does not exist")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
