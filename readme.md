@@ -23,23 +23,11 @@ The apps demonstrate a simple architecture that utilize Kafka as the message bro
 
 ### How to run
 1. Clone this repository
-2. Build the docker image in accout-service 
+2. Build and run all the services
 ```powershell
-cd account-service
-docker build -t account-service .
-cd ..
+docker-compose up --build
 ```
-3. Build the docker image in journal-service 
-```powershell
-cd journal-service
-docker build -t journal-service .
-cd ..
-```
-4. Run the docker-compose
-```powershell
-docker-compose up
-```
-5. Hit the API via Postman
+3. Hit the API via Postman
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
